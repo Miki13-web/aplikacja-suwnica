@@ -1,0 +1,81 @@
+/* src/App.css */
+
+/* Główne ustawienia strony */
+.container {
+  text-align: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 2rem;
+  max-width: 1200px; /* Nie pozwalamy stronie rozciągnąć się w nieskończoność na wielkich monitorach */
+  margin: 0 auto;    /* Wyśrodkowanie */
+}
+
+/* Wygląd pojedynczego panelu (karty) */
+.panel {
+  border: 1px solid #ddd;
+  padding: 2rem;
+  border-radius: 12px;
+  background-color: white;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Delikatny cień dodaje głębi */
+  text-align: left; /* Tekst w panelach równamy do lewej */
+}
+
+/* === MAGIA UKŁADU (CSS GRID) === */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Dwie kolumny o równej szerokości (1 fraction) */
+  gap: 30px; /* Odstęp między panelami */
+  margin-top: 40px;
+}
+
+/* Responsywność: Jeśli ekran jest węższy niż 768px (np. tablet/telefon), zrób jedną kolumnę */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr; 
+  }
+}
+
+/* Główne przyciski zasilania */
+button {
+  padding: 12px 24px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Styl dla wspólnej mapy fabryki */
+.factory-map-container {
+  background-color: white;
+  border: 2px solid #333;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.map-grid {
+  height: 250px;
+  background-color: #f0f4f8; /* Jasnoniebieskie tło mapy */
+  border: 1px dashed #aaa;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  font-family: monospace;
+}
