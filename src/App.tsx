@@ -1,102 +1,141 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
+import mqtt from 'mqtt';
+import { Header } from './components/Header';
+import { CranePanel } from './components/CranePanel';
+import { AgvPanel } from './components/AgvPanel';
+import { FactoryMap } from './components/FactoryMap';
+import './App.css';
 
-interface CranePanelProps {
-  isConnected: boolean;
-  onSetMovement: (dx: number, dy: number, dz: number, speed: number) => void;
-}
+function App() {
+  const [isCraneOnline, setIsCraneOnline] = useState(false);
+  const [isAgvOnline, setIsAgvOnline] = useState(false);
+  const [ipAddress, setIpAddress] = useState('192.168.1.100');
 
-export function CranePanel({ isConnected, onSetMovement }: CranePanelProps) {
-  const [speed, setSpeed] = useState(50);
-  const activeKeys = useRef(new Set<string>());
+  // Pozycja sterowana przez telemetrię z malinki
+  const [cranePosition, setCranePosition] = useState({ x: 50, y: 50, z: 0 });
 
-  // Sejf na funkcję ruchu - naprawia błąd zacinającej się suwnicy
-  const movementCallback = useRef(onSetMovement);
-  useEffect(() => {
-    movementCallback.current = onSetMovement;
-  }, [onSetMovement]);
+  const currentDirectionRef = useRef({ dx: 0, dy: 0, dz: 0, speed: 50 });
+  const mqttClientRef = useRef<mqtt.MqttClient | null>(null);
+  const moveIntervalRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    const updateMovement = () => {
-      let dx = 0, dy = 0, dz = 0;
-      const keys = activeKeys.current;
-
-      if (keys.has('w') || keys.has('arrowup')) dy -= 1;
-      if (keys.has('s') || keys.has('arrowdown')) dy += 1;
-      if (keys.has('a') || keys.has('arrowleft')) dx -= 1;
-      if (keys.has('d') || keys.has('arrowright')) dx += 1;
-      if (keys.has('x')) dz += 1;
-      if (keys.has('z')) dz -= 1;
-
-      movementCallback.current(dx, dy, dz, speed);
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
-
-      if (!isConnected || e.repeat) return;
-
-      const key = e.key.toLowerCase();
-      const validKeys = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'x', 'z'];
-
-      if (validKeys.includes(key)) {
-        activeKeys.current.add(key);
-        updateMovement();
+  const toggleCraneConnection = () => {
+    if (isCraneOnline) {
+      if (mqttClientRef.current) {
+        mqttClientRef.current.end();
+        mqttClientRef.current = null;
       }
-    };
+      setIsCraneOnline(false);
+      return;
+    }
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (!isConnected) return;
-      const key = e.key.toLowerCase();
-      if (activeKeys.current.has(key)) {
-        activeKeys.current.delete(key);
-        updateMovement();
+    const brokerUrl = `ws://${ipAddress}:9001`; 
+    const client = mqtt.connect(brokerUrl);
+
+    client.on('connect', () => { 
+      setIsCraneOnline(true);
+      // Podłączamy się do nasłuchu enkoderów
+      client.subscribe('fabryka/suwnica/telemetria');
+    });
+
+    client.on('message', (topic, message) => {
+      if (topic === 'fabryka/suwnica/telemetria') {
+        try {
+          const data = JSON.parse(message.toString());
+          // Tu można dostosować skalowanie (np. data.x / 10), żeby pasowało do procentów mapy
+          setCranePosition({ x: data.x, y: data.y, z: data.z });
+        } catch (e) { console.error("Błąd telemetrii"); }
       }
-    };
+    });
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    client.on('error', () => {
+      alert('Nie udało się połączyć. Sprawdź IP i działanie malinki.');
+      client.end();
+      setIsCraneOnline(false);
+    });
 
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [isConnected, speed]);
+    mqttClientRef.current = client;
+  };
+
+  const handleSetMovement = (dx: number, dy: number, dz: number, speed: number) => {
+    currentDirectionRef.current = { dx, dy, dz, speed };
+
+    if (dx === 0 && dy === 0 && dz === 0) {
+      if (moveIntervalRef.current !== null) {
+        clearInterval(moveIntervalRef.current);
+        moveIntervalRef.current = null;
+        
+        if (mqttClientRef.current && isCraneOnline) {
+          mqttClientRef.current.publish('fabryka/suwnica/sterowanie', JSON.stringify({ akcja: 'STOP' }));
+        }
+      }
+      return;
+    }
+
+    if (moveIntervalRef.current === null) {
+      moveIntervalRef.current = window.setInterval(() => {
+        const dir = currentDirectionRef.current;
+        if (mqttClientRef.current && isCraneOnline) {
+          const payload = JSON.stringify({ kierunekX: dir.dx, kierunekY: dir.dy, kierunekZ: dir.dz, predkosc: dir.speed });
+          mqttClientRef.current.publish('fabryka/suwnica/sterowanie', payload);
+        }
+      }, 50); // Strzelamy komendą ruchu 20 razy na sekundę
+    }
+  };
 
   return (
-    <div className="panel">
-      <h2>Suwnica (Raspberry Pi)</h2>
-      <p>Status: {isConnected ? <strong style={{ color: 'green' }}>🟢 Połączono</strong> : <strong style={{ color: 'red' }}>🔴 Rozłączono</strong>}</p>
-      
-      <div style={{ fontSize: '12px', color: '#555', backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '6px', marginBottom: '15px' }}>
-        <strong>Sterowanie Klawiaturą:</strong><br/>
-        • Ruch poziomy: <b>W S A D</b> lub <b>Strzałki</b><br/>
-        • Wysięgnik haka: <b>X</b> (Podnieś), <b>Z</b> (Opuść)
-      </div>
+    <div className="container">
+      <Header />
 
-      <div style={{ marginTop: '15px' }}>
-        <label>Prędkość robocza: <strong>{speed}%</strong></label>
+      <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#eef', borderRadius: '8px' }}>
+        <label style={{ marginRight: '10px', fontWeight: 'bold' }}>Adres IP Fabryki:</label>
         <input 
-          type="range" min="10" max="100" step="10" value={speed} disabled={!isConnected}
-          onChange={(e) => setSpeed(Number(e.target.value))}
-          style={{ width: '100%', marginTop: '5px' }}
+          type="text" value={ipAddress} onChange={(e) => setIpAddress(e.target.value)}
+          placeholder="np. 192.168.1.100"
+          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc', width: '200px' }}
         />
       </div>
 
-      <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 40px)', gap: '5px', justifyContent: 'center' }}>
-          <div /> 
-          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(0, -1, 0, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>W</button>
-          <div />
-          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(-1, 0, 0, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>A</button>
-          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(0, 1, 0, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>S</button>
-          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(1, 0, 0, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>D</button>
+      <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '30px' }}>
+        <button onClick={toggleCraneConnection} className={isCraneOnline ? 'btn-danger' : 'btn-success'}>
+          {isCraneOnline ? '🔴 Rozłącz Suwnicę' : '🟢 Połącz z Suwnicą'}
+        </button>
+        <button onClick={() => setIsAgvOnline(!isAgvOnline)} className={isAgvOnline ? 'btn-danger' : 'btn-success'}>
+          {isAgvOnline ? '🔴 Rozłącz AGV' : '🟢 Połącz z AGV'}
+        </button>
+      </div>
+
+      <div className="factory-map-container">
+        <h3>📍 Główny Podgląd Hali (Live Digital Twin)</h3>
+        <div style={{ display: 'flex', gap: '20px', height: '300px' }}>
+          
+          <div style={{ flexGrow: 1, height: '100%' }}>
+            <FactoryMap isCraneOnline={isCraneOnline} cranePosition={cranePosition} />
+          </div>
+
+          <div style={{ width: '80px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '2px solid #ccc', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden' }}>
+            <div style={{ padding: '5px', fontSize: '12px', fontWeight: 'bold', borderBottom: '1px solid #ddd', width: '100%', textAlign: 'center', backgroundColor: '#e9ecef', zIndex: 10 }}>HAK</div>
+            <div style={{ width: '4px', backgroundColor: '#333', position: 'absolute', top: '0', bottom: '0', zIndex: 1 }} />
+            <div style={{
+              position: 'absolute',
+              top: `calc(30px + ${cranePosition.z}% * 0.75)`, 
+              transition: 'top 50ms linear',
+              fontSize: '28px',
+              zIndex: 5,
+              backgroundColor: '#f8f9fa'
+            }}>
+              🪝
+            </div>
+          </div>
+
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(0, 0, 1, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>Podnieś (X)</button>
-          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(0, 0, -1, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>Opuść (Z)</button>
-        </div>
+      </div>
+
+      <div className="dashboard-grid">
+        <CranePanel isConnected={isCraneOnline} onSetMovement={handleSetMovement} />
+        <AgvPanel isConnected={isAgvOnline} />
       </div>
     </div>
   )
 }
+
+export default App;
