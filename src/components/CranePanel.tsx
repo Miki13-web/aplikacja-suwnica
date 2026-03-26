@@ -1,20 +1,91 @@
 // src/components/CranePanel.tsx
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface CranePanelProps {
   isConnected: boolean;
-  // Zmieniamy nazwy funkcji, żeby były precyzyjne
-  onStartMove: (dx: number, dy: number, speed: number) => void;
-  onStopMove: () => void;
+  onSetMovement: (dx: number, dy: number, dz: number, speed: number) => void;
 }
 
-export function CranePanel({ isConnected, onStartMove, onStopMove }: CranePanelProps) {
+export function CranePanel({ isConnected, onSetMovement }: CranePanelProps) {
   const [speed, setSpeed] = useState(50);
+  const activeKeys = useRef(new Set<string>());
+
+  // --- NAPRAWA BŁĘDU (ZAPOBIEGANIE RESTARTOM PAMIĘCI) ---
+  // Zapisujemy najnowszą funkcję ruchu w Refie, żeby odświeżanie pozycji mapy
+  // nie powodowało resetowania naszej klawiatury.
+  const movementCallback = useRef(onSetMovement);
+  useEffect(() => {
+    movementCallback.current = onSetMovement;
+  }, [onSetMovement]);
+  // -----------------------------------------------------
+
+  useEffect(() => {
+    const updateMovement = () => {
+      let dx = 0, dy = 0, dz = 0;
+      const keys = activeKeys.current;
+
+      // Oś Y
+      if (keys.has('w') || keys.has('arrowup')) dy -= 1;
+      if (keys.has('s') || keys.has('arrowdown')) dy += 1;
+      // Oś X
+      if (keys.has('a') || keys.has('arrowleft')) dx -= 1;
+      if (keys.has('d') || keys.has('arrowright')) dx += 1;
+      // Oś Z
+      if (keys.has('x')) dz += 1;
+      if (keys.has('z')) dz -= 1;
+
+      // Wywołujemy funkcję ukrytą w sejfie!
+      movementCallback.current(dx, dy, dz, speed);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault(); // Blokujemy przewijanie strony
+      }
+
+      if (!isConnected || e.repeat) return;
+
+      const key = e.key.toLowerCase();
+      const validKeys = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'x', 'z'];
+
+      if (validKeys.includes(key)) {
+        activeKeys.current.add(key); // Dodajemy do pamięci
+        updateMovement();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!isConnected) return;
+      
+      const key = e.key.toLowerCase();
+      if (activeKeys.current.has(key)) {
+        activeKeys.current.delete(key); // Usuwamy z pamięci
+        updateMovement();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      // USUNIĘTO CZYSZCZENIE PAMIĘCI! Teraz pamięć przetrwa odświeżanie klatek.
+    };
+  }, [isConnected, speed]); // USUNIĘTO onSetMovement z zależności!
 
   return (
     <div className="panel">
       <h2>Suwnica (Raspberry Pi)</h2>
-      <p>Status: {isConnected ? <strong style={{ color: 'green' }}>Zasilanie włączone</strong> : <strong style={{ color: 'red' }}>Brak zasilania</strong>}</p>
+      <p>Status: {isConnected ? <strong style={{ color: 'green' }}>🟢 Połączono</strong> : <strong style={{ color: 'red' }}>🔴 Rozłączono</strong>}</p>
+      
+      <div style={{ fontSize: '12px', color: '#555', backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '6px', marginBottom: '15px' }}>
+        <strong>Sterowanie Klawiaturą (Możesz wciskać 2 naraz!):</strong><br/>
+        • Ruch poziomy: <b>W S A D</b> lub <b>Strzałki</b><br/>
+        • Wysięgnik haka: <b>X</b> (Podnieś), <b>Z</b> (Opuść)
+      </div>
 
       <div style={{ marginTop: '15px' }}>
         <label>Prędkość robocza: <strong>{speed}%</strong></label>
@@ -25,33 +96,21 @@ export function CranePanel({ isConnected, onStartMove, onStopMove }: CranePanelP
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 50px)', gap: '5px', justifyContent: 'center', marginTop: '20px' }}>
-        <div /> 
-        <button 
-          disabled={!isConnected} 
-          onPointerDown={() => onStartMove(0, -1, speed)} 
-          onPointerUp={onStopMove} 
-          onPointerLeave={onStopMove}
-        >↑</button>
-        <div />
-        <button 
-          disabled={!isConnected} 
-          onPointerDown={() => onStartMove(-1, 0, speed)} 
-          onPointerUp={onStopMove} 
-          onPointerLeave={onStopMove}
-        >←</button>
-        <button 
-          disabled={!isConnected} 
-          onPointerDown={() => onStartMove(0, 1, speed)} 
-          onPointerUp={onStopMove} 
-          onPointerLeave={onStopMove}
-        >↓</button>
-        <button 
-          disabled={!isConnected} 
-          onPointerDown={() => onStartMove(1, 0, speed)} 
-          onPointerUp={onStopMove} 
-          onPointerLeave={onStopMove}
-        >→</button>
+      <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
+        {/* Kontrolki Myszkowe */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 40px)', gap: '5px', justifyContent: 'center' }}>
+          <div /> 
+          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(0, -1, 0, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>W</button>
+          <div />
+          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(-1, 0, 0, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>A</button>
+          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(0, 1, 0, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>S</button>
+          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(1, 0, 0, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>D</button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(0, 0, 1, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>Podnieś (X)</button>
+          <button disabled={!isConnected} onMouseDown={() => movementCallback.current(0, 0, -1, speed)} onMouseUp={() => movementCallback.current(0,0,0,speed)} onMouseLeave={() => movementCallback.current(0,0,0,speed)}>Opuść (Z)</button>
+        </div>
       </div>
     </div>
   )
