@@ -42,16 +42,16 @@ function App() {
         try {
           const data = JSON.parse(message.toString());
           
-          // Skoro 0 to teraz fizyczny róg, potrzebujemy tylko maksymalnego zasięgu!
-          // Obliczyliśmy go wcześniej: 621 + 747 = ok. 1368 dla X.
-          const MAX_X = 1368; 
-          const MAX_Y = 760; // 695 + 65
+          // 👇 TA LINIJKA PRZYWRÓCI LOGI W KONSOLI (F12) 👇
+          console.log("📍 Surowe dane z maszyny:", data);
+          
+          // Wpisz tutaj tymczasowo 1470 i 1000, dopóki nie odczytasz z logów dokładnych limitów
+          const MAX_X = 1470;
+          const MAX_Y = 1000;
 
-          // Najprostszy wzór świata
           let percentX = (data.x / MAX_X) * 100;
           let percentY = (data.y / MAX_Y) * 100;
 
-          // Zabezpieczenie na wypadek milimetrowych przekłamań paska
           percentX = Math.max(0, Math.min(100, percentX));
           percentY = Math.max(0, Math.min(100, percentY));
 
