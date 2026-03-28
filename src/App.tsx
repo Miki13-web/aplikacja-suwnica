@@ -37,12 +37,25 @@ function App() {
       client.subscribe('fabryka/suwnica/telemetria');
     });
 
-    client.on('message', (topic, message) => {
+   client.on('message', (topic, message) => {
       if (topic === 'fabryka/suwnica/telemetria') {
         try {
           const data = JSON.parse(message.toString());
-          // Tu można dostosować skalowanie (np. data.x / 10), żeby pasowało do procentów mapy
-          setCranePosition({ x: data.x, y: data.y, z: data.z });
+          
+          // Skoro 0 to teraz fizyczny róg, potrzebujemy tylko maksymalnego zasięgu!
+          // Obliczyliśmy go wcześniej: 621 + 747 = ok. 1368 dla X.
+          const MAX_X = 1368; 
+          const MAX_Y = 760; // 695 + 65
+
+          // Najprostszy wzór świata
+          let percentX = (data.x / MAX_X) * 100;
+          let percentY = (data.y / MAX_Y) * 100;
+
+          // Zabezpieczenie na wypadek milimetrowych przekłamań paska
+          percentX = Math.max(0, Math.min(100, percentX));
+          percentY = Math.max(0, Math.min(100, percentY));
+
+          setCranePosition({ x: percentX, y: percentY, z: 0 });
         } catch (e) { console.error("Błąd telemetrii"); }
       }
     });
