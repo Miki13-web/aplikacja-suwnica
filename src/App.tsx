@@ -41,17 +41,22 @@ function App() {
       if (topic === 'fabryka/suwnica/telemetria') {
         try {
           const data = JSON.parse(message.toString());
-          
-          // 👇 TA LINIJKA PRZYWRÓCI LOGI W KONSOLI (F12) 👇
           console.log("📍 Surowe dane z maszyny:", data);
           
-          // Wpisz tutaj tymczasowo 1470 i 1000, dopóki nie odczytasz z logów dokładnych limitów
+          // Używamy zaktualizowanych limitów:
           const MAX_X = 1470;
-          const MAX_Y = 1000;
+          // Z Twoich logów wiemy, że dolna krawędź to 782 mm. 
+          // Jeśli maszyna teraz dociąga dalej, możesz to potem zmienić na 800.
+          const MAX_Y = 782; 
 
+          // Czysta matematyka (od 0 do 100%)
           let percentX = (data.x / MAX_X) * 100;
           let percentY = (data.y / MAX_Y) * 100;
 
+          // ODWRACAMY Y: Ponieważ maszyna jedzie do przodu, a kropka ma jechać w dół ekranu
+          percentY = 100 - percentY;
+
+          // Twarde zabezpieczenie granic
           percentX = Math.max(0, Math.min(100, percentX));
           percentY = Math.max(0, Math.min(100, percentY));
 

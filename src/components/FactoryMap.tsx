@@ -22,25 +22,17 @@ export function FactoryMap({ isCraneOnline, cranePosition }: FactoryMapProps) {
       
       {/* Nasza suwnica - renderujemy ją tylko, jeśli system jest online */}
       {isCraneOnline && (
-        <div style={{
+        <div 
+        style={{
           position: 'absolute',
-          // Używamy % do pozycjonowania. Odejmujemy 15px, żeby wyśrodkować ikonkę (która ma 30x30px)
-          left: `calc(${cranePosition.x}% - 15px)`,
-          top: `calc(${cranePosition.y}% - 15px)`,
-          width: '30px',
-          height: '30px',
-          backgroundColor: '#007bff',
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: '4px',
-          boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
-          // PŁYNNOŚĆ: Mówimy przeglądarce, żeby każda zmiana pozycji trwała 50ms w sposób jednostajny (linear)
-          transition: 'left 50ms linear, top 50ms linear'
-        }}>
-          🏗️
-        </div>
+          left: `${cranePosition.x}%`,
+          top: `${cranePosition.y}%`,
+          transform: 'translate(-50%, -50%)', // <--- TO ZAPEWNIA DOJAZD DO SAMEJ KRAWĘDZI EKRANU
+          // reszta Twoich stylów (np. obrazek suwnicy, tło itp.)
+        }}
+      >
+        🏗️
+      </div>
       )}
     </div>
   );
