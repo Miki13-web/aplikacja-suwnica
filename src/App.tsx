@@ -10,13 +10,18 @@ function App() {
   const [isCraneOnline, setIsCraneOnline] = useState(false);
   const [isAgvOnline, setIsAgvOnline] = useState(false);
   const [ipAddress, setIpAddress] = useState('192.168.1.100');
+  const [machineStatus, setMachineStatus] = useState('DISCONNECTED'); // Status bazowania
 
   // Pozycja sterowana przez telemetrię z malinki
-  const [cranePosition, setCranePosition] = useState({ x: 50, y: 50, z: 0 });
+  const [cranePosition, setCranePosition] = useState({ x: 0, y: 0, z: 0 });
 
   const currentDirectionRef = useRef({ dx: 0, dy: 0, dz: 0, speed: 50 });
   const mqttClientRef = useRef<mqtt.MqttClient | null>(null);
   const moveIntervalRef = useRef<number | null>(null);
+
+  // --- TWOJE NOWE, APTEKARSKIE KALIBRACJE ---
+  const WORKSPACE_WIDTH = 1290.0;
+  const WORKSPACE_HEIGHT = 750.0;
 
   const toggleCraneConnection = () => {
     if (isCraneOnline) {
@@ -25,43 +30,40 @@ function App() {
         mqttClientRef.current = null;
       }
       setIsCraneOnline(false);
+      setMachineStatus('DISCONNECTED');
       return;
     }
 
+    // ŁĄCZENIE PO TWOIM IP Z INPUTA
     const brokerUrl = `ws://${ipAddress}:9001`; 
     const client = mqtt.connect(brokerUrl);
 
     client.on('connect', () => { 
       setIsCraneOnline(true);
-      // Podłączamy się do nasłuchu enkoderów
+      setMachineStatus('CONNECTED');
       client.subscribe('fabryka/suwnica/telemetria');
     });
 
-   client.on('message', (topic, message) => {
+    client.on('message', (topic, message) => {
       if (topic === 'fabryka/suwnica/telemetria') {
         try {
           const data = JSON.parse(message.toString());
-          console.log("📍 Surowe dane z maszyny:", data);
           
-          // Używamy zaktualizowanych limitów:
-          const MAX_X = 1470;
-          // Z Twoich logów wiemy, że dolna krawędź to 782 mm. 
-          // Jeśli maszyna teraz dociąga dalej, możesz to potem zmienić na 800.
-          const MAX_Y = 782; 
+          // Aktualizacja statusu (czy maszyna się bazuje, czy jest gotowa)
+          if (data.status) setMachineStatus(data.status);
 
-          // Czysta matematyka (od 0 do 100%)
-          let percentX = (data.x / MAX_X) * 100;
-          let percentY = (data.y / MAX_Y) * 100;
+          // Czyste obliczenie procentów na podstawie nowych limitów roboczych
+          let percentX = (data.x / WORKSPACE_WIDTH) * 100;
+          let percentY = (data.y / WORKSPACE_HEIGHT) * 100;
 
-          // ODWRACAMY Y: Ponieważ maszyna jedzie do przodu, a kropka ma jechać w dół ekranu
-          percentY = 100 - percentY;
-
-          // Twarde zabezpieczenie granic
+          // Zabezpieczenie przed wyjechaniem poza UI
           percentX = Math.max(0, Math.min(100, percentX));
           percentY = Math.max(0, Math.min(100, percentY));
 
-          setCranePosition({ x: percentX, y: percentY, z: 0 });
-        } catch (e) { console.error("Błąd telemetrii"); }
+          setCranePosition({ x: percentX, y: percentY, z: data.z || 0 });
+        } catch (e) {
+          console.error("Błąd telemetrii");
+        }
       }
     });
 
@@ -69,6 +71,7 @@ function App() {
       alert('Nie udało się połączyć. Sprawdź IP i działanie malinki.');
       client.end();
       setIsCraneOnline(false);
+      setMachineStatus('DISCONNECTED');
     });
 
     mqttClientRef.current = client;
@@ -100,10 +103,18 @@ function App() {
     }
   };
 
+  // Komenda wyzwalająca bazowanie
+  const handleHoming = () => {
+    if (mqttClientRef.current && isCraneOnline) {
+      mqttClientRef.current.publish('fabryka/suwnica/sterowanie', JSON.stringify({ bazuj: true }));
+    }
+  };
+
   return (
     <div className="container">
       <Header />
 
+      {/* PRZYWRÓCONE POLE IP */}
       <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#eef', borderRadius: '8px' }}>
         <label style={{ marginRight: '10px', fontWeight: 'bold' }}>Adres IP Fabryki:</label>
         <input 
@@ -113,6 +124,7 @@ function App() {
         />
       </div>
 
+      {/* PRZYWRÓCONE PRZYCISKI POŁĄCZEŃ */}
       <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '30px' }}>
         <button onClick={toggleCraneConnection} className={isCraneOnline ? 'btn-danger' : 'btn-success'}>
           {isCraneOnline ? '🔴 Rozłącz Suwnicę' : '🟢 Połącz z Suwnicą'}
@@ -122,6 +134,7 @@ function App() {
         </button>
       </div>
 
+      {/* MAPA HALI (Digital Twin) */}
       <div className="factory-map-container">
         <h3>📍 Główny Podgląd Hali (Live Digital Twin)</h3>
         <div style={{ display: 'flex', gap: '20px', height: '300px' }}>
@@ -148,12 +161,18 @@ function App() {
         </div>
       </div>
 
+      {/* PANELE STEROWANIA */}
       <div className="dashboard-grid">
-        <CranePanel isConnected={isCraneOnline} onSetMovement={handleSetMovement} />
+        <CranePanel 
+          isConnected={isCraneOnline} 
+          machineStatus={machineStatus}
+          onSetMovement={handleSetMovement} 
+          onHoming={handleHoming}
+        />
         <AgvPanel isConnected={isAgvOnline} />
       </div>
     </div>
-  )
+  );
 }
 
 export default App;
