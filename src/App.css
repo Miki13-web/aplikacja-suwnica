@@ -1,36 +1,59 @@
 /* src/App.css */
 
+/* 1. Reset podstawowy, aby usunąć domyślne białe marginesy przeglądarki */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #1e1e1e; /* Głęboki ciemnoszary dla całego tła */
+  color: #e0e0e0; /* Jasny tekst, niezbędny na ciemnym tle */
+  box-sizing: border-box; /* Zabezpiecza przed "wylewaniem" się elementów poza ekran przez padding */
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
 /* Główne ustawienia strony */
 .container {
   text-align: center;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #1e1e1e;
   padding: 2rem;
-  max-width: 1200px; /* Nie pozwalamy stronie rozciągnąć się w nieskończoność na wielkich monitorach */
-  margin: 0 auto;    /* Wyśrodkowanie */
+  width: 100%;
+  min-height: 100vh; /* Gwarantuje, że kontener zajmie przynajmniej całą wysokość ekranu */
+  display: flex;
+  flex-direction: column; /* Pomaga w prawidłowym układaniu siatki na całej stronie */
 }
 
 /* Wygląd pojedynczego panelu (karty) */
 .panel {
-  border: 1px solid #ddd;
+  border: 1px solid #3a3a3a; /* Ciemniejsza ramka, żeby nie raziła w oczy */
   padding: 2rem;
   border-radius: 12px;
-  background-color: white;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Delikatny cień dodaje głębi */
-  text-align: left; /* Tekst w panelach równamy do lewej */
+  background-color: #2b2b2b; /* Nieco jaśniejszy szary niż tło, aby panele się odcinały */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); /* Nieco mocniejszy cień dodaje głębi w ciemnym motywie */
+  text-align: left;
 }
 
 /* === MAGIA UKŁADU (CSS GRID) === */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Dwie kolumny o równej szerokości (1 fraction) */
-  gap: 30px; /* Odstęp między panelami */
+  grid-template-columns: 1fr 1fr; /* Dwie równe kolumny na dużych ekranach */
+  gap: 30px;
   margin-top: 40px;
+  flex-grow: 1; /* Pozwala siatce wypełnić dostępną przestrzeń pionową */
 }
 
-/* Responsywność: Jeśli ekran jest węższy niż 768px (np. tablet/telefon), zrób jedną kolumnę */
+/* Responsywność dla ekranów mniejszych niż 768px */
 @media (max-width: 768px) {
   .dashboard-grid {
-    grid-template-columns: 1fr; 
+    grid-template-columns: 1fr; /* Jedna kolumna na telefonach/tabletach */
+  }
+  
+  .container {
+    padding: 1rem; /* Trochę mniejszy margines na małych ekranach, by zyskać miejsce */
   }
 }
 
@@ -52,30 +75,31 @@ button:disabled {
 
 .btn-success {
   background-color: #28a745;
-  color: white;
+  color: #ffffff; /* Biały tekst lepiej kontrastuje na ciemnych przyciskach */
 }
 
 .btn-danger {
   background-color: #dc3545;
-  color: white;
+  color: #ffffff;
 }
 
 /* Styl dla wspólnej mapy fabryki */
 .factory-map-container {
-  background-color: white;
-  border: 2px solid #333;
+  background-color: #2b2b2b;
+  border: 1px solid #3a3a3a;
   border-radius: 12px;
-  padding: 20px;
+  padding: 25px;
   margin-bottom: 30px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 1350px; /* POWIĘKSZONY PANEL */
+  margin: 0 auto;
 }
 
 .map-grid {
-  height: 250px;
-  background-color: #f0f4f8; /* Jasnoniebieskie tło mapy */
-  border: 1px dashed #aaa;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  font-family: monospace;
+  width: 100%;
+  aspect-ratio: 1290 / 750; /* PROPORCJE TWOJEJ HALI */
+  background-color: #111;
+  border: 2px solid #444;
+  position: relative;
+  overflow: hidden;
 }
