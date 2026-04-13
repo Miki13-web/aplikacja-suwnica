@@ -5,6 +5,7 @@ import { CranePanel } from './components/CranePanel';
 import { AgvPanel } from './components/AgvPanel';
 import { FactoryMap } from './components/FactoryMap';
 import './App.css';
+import { DigitalTwinScene } from './components/DigitalTwin';
 
 function App() {
   const [isCraneOnline, setIsCraneOnline] = useState(false);
@@ -20,6 +21,8 @@ function App() {
   const currentDirectionRef = useRef({ dx: 0, dy: 0, dz: 0, speed: 70 });
   const mqttClientRef = useRef<mqtt.MqttClient | null>(null);
   const moveIntervalRef = useRef<number | null>(null);
+
+  const [viewMode, setViewMode] = useState<'2D' | '3D'>('2D');
 
   const toggleCraneConnection = () => {
     if (isCraneOnline) {
@@ -139,36 +142,63 @@ function App() {
       </div>
 
       <div className="factory-map-container">
-        <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#e0e0e0' }}>📍 Główny Podgląd Hali</h3>
+        {/* NAGŁÓWEK Z PRZEŁĄCZNIKIEM 2D / 3D */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h3 style={{ margin: 0, color: '#e0e0e0' }}>📍 Główny Podgląd Hali</h3>
+          
+          <div style={{ display: 'flex', backgroundColor: '#111', borderRadius: '8px', border: '1px solid #444', overflow: 'hidden' }}>
+            <button 
+              onClick={() => setViewMode('2D')}
+              style={{ padding: '8px 16px', border: 'none', backgroundColor: viewMode === '2D' ? '#00d2ff' : 'transparent', color: viewMode === '2D' ? '#000' : '#888', fontWeight: 'bold', cursor: 'pointer', borderRadius: 0 }}
+            >
+              Widok 2D
+            </button>
+            <button 
+              onClick={() => setViewMode('3D')}
+              style={{ padding: '8px 16px', border: 'none', backgroundColor: viewMode === '3D' ? '#00d2ff' : 'transparent', color: viewMode === '3D' ? '#000' : '#888', fontWeight: 'bold', cursor: 'pointer', borderRadius: 0 }}
+            >
+              Digital Twin 3D
+            </button>
+          </div>
+        </div>
         
+        {/* WYŚWIETLANIE WSPÓŁRZĘDNYCH */}
         <div style={{ display: 'flex', justifyContent: 'space-around', backgroundColor: '#111', padding: '12px', borderRadius: '6px', border: '1px solid #333', marginBottom: '20px', fontFamily: 'monospace', fontSize: '22px', color: '#00d2ff', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.8)' }}>
           <div>X: <span style={{ color: '#fff' }}>{Number(rawTelemetry.x).toFixed(1)}</span> <span style={{ color: '#555', fontSize: '14px' }}>mm</span></div>
           <div>Y: <span style={{ color: '#fff' }}>{Number(rawTelemetry.y).toFixed(1)}</span> <span style={{ color: '#555', fontSize: '14px' }}>mm</span></div>
           <div>Z: <span style={{ color: '#fff' }}>{Number(rawTelemetry.z).toFixed(1)}</span> <span style={{ color: '#555', fontSize: '14px' }}>j</span></div>
         </div>
         
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'stretch' }}>
-          <div style={{ flexGrow: 1, minWidth: 0 }}>
-            <FactoryMap isCraneOnline={isCraneOnline} cranePosition={cranePosition} />
-          </div>
-
-          <div style={{ width: '80px', backgroundColor: '#1a1a1a', borderRadius: '8px', border: '1px solid #444', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden' }}>
-            <div style={{ padding: '8px 0', fontSize: '12px', fontWeight: 'bold', borderBottom: '1px solid #444', width: '100%', textAlign: 'center', backgroundColor: '#2b2b2b', zIndex: 10 }}>HAK</div>
-            <div style={{ width: '2px', backgroundColor: '#444', position: 'absolute', top: '0', bottom: '0', zIndex: 1 }} />
-            <div style={{
-              position: 'absolute',
-              // NOWE LOGIKA Z: Używamy Math.abs, więc dla wartości na minusie (-500) odczyt robi się dodatni (500) 
-              // i opuszcza hak proporcjonalnie w dół. Hak nie wyjedzie za kontener dzięki zablokowaniu min na 500j.
-              top: `calc(35px + (100% - 65px) * (${Math.min(500, Math.abs(rawTelemetry.z)) / 500}))`, 
-              transition: 'top 100ms linear',
-              fontSize: '24px',
-              zIndex: 5,
-              filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))'
-            }}>
-              🪝
+        {/* LOGIKA WYŚWIETLANIA 2D lub 3D */}
+        {viewMode === '2D' ? (
+          // STARY DOBRY WIDOK 2D
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'stretch' }}>
+            <div style={{ flexGrow: 1, minWidth: 0 }}>
+              <FactoryMap isCraneOnline={isCraneOnline} cranePosition={cranePosition} />
+            </div>
+            <div style={{ width: '80px', backgroundColor: '#1a1a1a', borderRadius: '8px', border: '1px solid #444', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden' }}>
+              <div style={{ padding: '8px 0', fontSize: '12px', fontWeight: 'bold', borderBottom: '1px solid #444', width: '100%', textAlign: 'center', backgroundColor: '#2b2b2b', zIndex: 10 }}>HAK</div>
+              <div style={{ width: '2px', backgroundColor: '#444', position: 'absolute', top: '0', bottom: '0', zIndex: 1 }} />
+              <div style={{
+                position: 'absolute',
+                top: `calc(35px + (100% - 65px) * (${Math.min(500, Math.abs(rawTelemetry.z)) / 500}))`, 
+                transition: 'top 100ms linear',
+                fontSize: '24px',
+                zIndex: 5,
+                filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))'
+              }}>
+                🪝
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          // NOWY DIGITAL TWIN 3D!
+          <DigitalTwinScene 
+            realX={rawTelemetry.x} 
+            realY={rawTelemetry.y} 
+            realZ={rawTelemetry.z} 
+          />
+        )}
       </div>
 
       <div className="dashboard-grid">
