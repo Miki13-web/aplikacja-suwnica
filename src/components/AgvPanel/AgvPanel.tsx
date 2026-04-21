@@ -1,4 +1,4 @@
-// src/components/AgvPanel.tsx
+import styles from './AgvPanel.module.css';
 
 interface AgvPanelProps {
   isConnected: boolean;
@@ -6,7 +6,7 @@ interface AgvPanelProps {
 
 export function AgvPanel({ isConnected }: AgvPanelProps) {
   return (
-    <div className="panel">
+    <div className={styles.panel}>
       <h2>Pojazd AGV (Platforma)</h2>
       
       <p>
@@ -18,23 +18,12 @@ export function AgvPanel({ isConnected }: AgvPanelProps) {
         )}
       </p>
 
-      {/* Tutaj w przyszłości wstawimy naszą mapę 2D magazynu */}
-      <div style={{ 
-        marginTop: '20px', 
-        height: '150px', 
-        backgroundColor: isConnected ? '#e8f4f8' : '#eeeeee',
-        border: '2px dashed #ccc',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: '8px',
-        transition: 'background-color 0.3s'
-      }}>
+      <div className={`${styles.mapPlaceholder} ${isConnected ? styles.online : styles.offline}`}>
         {isConnected ? '📍 Mapa systemu (Wkrótce)' : 'Oczekiwanie na system...'}
       </div>
       
       <div style={{ marginTop: '15px' }}>
-        <button disabled={!isConnected} style={{ width: '100%' }}>
+        <button disabled={!isConnected} className={styles.btnAction}>
           Wyznacz nową trasę
         </button>
       </div>

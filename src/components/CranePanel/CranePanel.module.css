@@ -1,0 +1,15 @@
+.panel {
+  border: 1px solid #3a3a3a; padding: 2rem; border-radius: 12px;
+  background-color: #2b2b2b; box-shadow: 0 4px 12px rgba(0,0,0,0.3); text-align: left; font-family: 'Saira Stencil';
+}
+.buttonGroup { display: flex; gap: 10px; margin-bottom: 15px; }
+.btn { padding: 10px; border: none; border-radius: 5px; font-weight: bold; font-family:'Segoe UI'; cursor: pointer; color: #000; }
+.btnDisabled { opacity: 0.5; cursor: not-allowed; }
+.btnWarning { background-color: #f0ad4e; flex: 2; }
+.btnInfo { background-color: #5bc0de; flex: 1; }
+.instructions {
+  font-size: 13px; font-family:'Segoe UI'; color: #ccc; background-color: #2a2a2a; padding: 15px;
+  border-radius: 6px; margin-bottom: 15px; border: 1px solid #444;
+}
+.warningText { color: #ff6b6b; }
+.speedInput { width: 100%; margin-top: 5px; cursor: pointer; }

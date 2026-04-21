@@ -1,0 +1,133 @@
+/* src/App.module.css */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0 2rem 2rem 2rem;
+  text-align: center; /* Globalne środkowanie treści */
+}
+
+/* GŁÓWNY PASEK KONTROLNY (IP + POŁĄCZENIE) */
+.controlToolbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  background: rgba(43, 43, 43, 0.7);
+  backdrop-filter: blur(12px); /* Efekt szklanego panelu */
+  padding: 15px 45px;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 0 auto 40px auto;
+  width: fit-content;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.deviceSection {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.ipLabel {
+  font-family: 'Saira Stencil', sans-serif;
+  font-size: 0.85rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.ipInput {
+  background: #111;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #00d2ff;
+  padding: 8px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  width: 150px;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.ipInput:focus {
+  border-color: #00d2ff;
+  box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
+}
+
+/* PRZYCISKI Z EFEKTEM GLOW */
+.btnAction {
+  padding: 10px 24px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 10px;
+}
+
+.btnOnline {
+  background: rgba(40, 167, 69, 0.15);
+  color: #28a745;
+  border: 1px solid #28a745;
+  box-shadow: 0 0 15px rgba(40, 167, 69, 0.1);
+}
+
+.btnOnline:hover {
+  background: #28a745;
+  color: #fff;
+  box-shadow: 0 0 25px rgba(40, 167, 69, 0.5);
+}
+
+.btnOffline {
+  background: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  box-shadow: 0 0 15px rgba(220, 53, 69, 0.1);
+}
+
+.btnOffline:hover {
+  background: #dc3545;
+  color: #fff;
+  box-shadow: 0 0 25px rgba(220, 53, 69, 0.5);
+}
+
+/* KONSTRUKCJA DASHBOARDU */
+.debugTerminal {
+  max-width: 1350px;
+  margin: 0 auto 25px auto;
+  background-color: #000;
+  color: #0f0;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  text-align: left;
+}
+
+.factoryMapContainer {
+  background-color: #2b2b2b;
+  border: 1px solid #3a3a3a;
+  border-radius: 15px;
+  padding: 20px;
+  margin: 0 auto 35px auto;
+  width: 95%;
+  max-width: 1150px;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+@media (max-width: 1100px) {
+  .dashboardGrid { grid-template-columns: 1fr; }
+  .controlToolbar { gap: 20px; padding: 15px 25px; flex-direction: column; border-radius: 20px; }
+}
