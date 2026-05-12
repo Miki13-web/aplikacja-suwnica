@@ -1,7 +1,7 @@
 /* src/components/FactoryMap/FactoryMap.module.css */
 .mapGrid {
   width: 100%;
-  aspect-ratio: 1290 / 750; /* Proporcje hali */
+  aspect-ratio: 1290 / 700; /* Proporcje hali */
   background-color: #111;
   border: 2px solid #444;
   position: relative;

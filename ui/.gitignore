@@ -1,0 +1,18 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn.lock
+
+# Build output (Vite / React)
+dist/
+dist-ssr/
+build/
+
+# Local env files
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log

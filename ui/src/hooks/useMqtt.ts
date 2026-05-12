@@ -7,6 +7,7 @@ export function useMqtt(ipAddress: string) {
   const [machineStatus, setMachineStatus] = useState('DISCONNECTED');
   const [rawTelemetry, setRawTelemetry] = useState({ x: 0, y: 0, z: 0, angleX: 0, angleY: 0 });
   const [cranePosition, setCranePosition] = useState({ x: 0, y: 0, z: 0 });
+  const [isRecording, setIsRecording] = useState(false);
   const [debugMqttPayload, setDebugMqttPayload] = useState('Oczekiwanie na pierwsze dane...');
 
   const mqttClientRef = useRef<mqtt.MqttClient | null>(null);
@@ -29,13 +30,14 @@ export function useMqtt(ipAddress: string) {
       }
       setIsCraneOnline(false);
       setMachineStatus('DISCONNECTED');
+      setIsRecording(false);
       return;
     }
 
-    const brokerUrl = `ws://${ipAddress}:9001`; 
+    const brokerUrl = `ws://${ipAddress}:9001`;
     const client = mqtt.connect(brokerUrl);
 
-    client.on('connect', () => { 
+    client.on('connect', () => {
       setIsCraneOnline(true);
       setMachineStatus('CONNECTED');
       client.subscribe('fabryka/suwnica/telemetria');
@@ -48,20 +50,23 @@ export function useMqtt(ipAddress: string) {
 
         try {
           const data = JSON.parse(payloadString);
-          const safeX = typeof data.x === 'number' ? data.x : 0; 
-          const safeY = typeof data.y === 'number' ? data.y : 0; 
+          const safeX = typeof data.x === 'number' ? data.x : 0;
+          const safeY = typeof data.y === 'number' ? data.y : 0;
           const safeZ = Math.abs(data.z || 0);
 
-          setRawTelemetry({ 
+          setRawTelemetry({
             x: safeX, y: safeY, z: safeZ,
-            angleX: data.angleX || 0, angleY: data.angleY || 0 
+            angleX: data.angleX || 0, angleY: data.angleY || 0
           });
 
-          setCranePosition({ 
-            x: (safeX / 1290.0) * 100, 
-            y: (safeY / 750.0) * 100, 
-            z: safeZ 
+          setCranePosition({
+            x: (safeX / 1290.0) * 100,
+            y: (safeY / 750.0) * 100,
+            z: safeZ
           });
+
+          const safeIsRecording = typeof data.isRecording === 'boolean' ? data.isRecording : false;
+          setIsRecording(safeIsRecording);
         } catch (e) { console.error(e); }
       }
     });
@@ -94,7 +99,7 @@ export function useMqtt(ipAddress: string) {
       moveIntervalRef.current = window.setInterval(() => {
         const dir = currentDirectionRef.current;
         if (mqttClientRef.current && isCraneOnline) {
-          
+
           let finalSpeed = 0;
 
           // LOGIKA MAPOWANIA PRĘDKOŚCI
@@ -108,16 +113,16 @@ export function useMqtt(ipAddress: string) {
             finalSpeed = 70;
           }
 
-          const payload = JSON.stringify({ 
-            kierunekX: dir.dx, 
-            kierunekY: dir.dy, 
-            kierunekZ: dir.dz, 
-            predkosc: finalSpeed 
+          const payload = JSON.stringify({
+            kierunekX: dir.dx,
+            kierunekY: dir.dy,
+            kierunekZ: dir.dz,
+            predkosc: finalSpeed
           });
 
           mqttClientRef.current.publish('fabryka/suwnica/sterowanie', payload);
         }
-      }, 50); 
+      }, 50);
     }
   }, [isCraneOnline]);
 
@@ -133,15 +138,25 @@ export function useMqtt(ipAddress: string) {
     }
   }, [isCraneOnline]);
 
+  // --- NOWA FUNKCJA DO NAGRYWANIA ---
+  const triggerRecording = useCallback((start: boolean) => {
+    if (mqttClientRef.current && isCraneOnline) {
+      const akcja = start ? 'START_REC' : 'STOP_REC';
+      mqttClientRef.current.publish('fabryka/suwnica/sterowanie', JSON.stringify({ akcja }));
+    }
+  }, [isCraneOnline]);
+
   return {
     isCraneOnline,
     machineStatus,
     rawTelemetry,
     cranePosition,
+    isRecording,
     debugMqttPayload,
     toggleCraneConnection,
     setMovement,
     triggerHoming,
-    triggerHomingZ
+    triggerHomingZ,
+    triggerRecording // Eksportujemy nową funkcję
   };
 }
